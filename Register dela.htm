@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Work Check-in/Check-out System</title>
+    <style>
+                 body {
+                 font-family: Arial, sans-serif;
+                 margin: 20px;
+                 text-align: center;
+                 background-color: #f4f4f4;
+                  }
+
+                  h1 {
+                 text-align: center;
+            color: #000000;
+            }
+
+            button {
+            padding: 8px 40px;
+     background-color:#1CAB15;
+    color:#f4f4f4;
+    border-radius:.50rem;
+    border: 3px solid;
+    cursor:pointer
+    }
+
+    input {
+    padding: 8px;
+    font-size: 20px;
+    border: 2px solid #1CAB15;
+    border-radius: 50px;
+    margin: 5px;
+                                }
+
+                                #duration {
+                                                margin-top: 20px;
+                                                font-size: 20px;
+                                                color: #000;
+                                }
+
+                                #names {
+                                                margin-top: 20px;
+                                                font-size: 20px;
+                                                color: #000;
+                                }
+
+                                #history {
+                                                margin-top: 60px;
+                                                text-align: center;
+                                                font-size: 20px;
+                                                color: #000;
+                                }
+
+                                ul {
+                                                list-style-type: none;
+                                                padding: 0;
+                                }
+
+                                li {
+                                                margin-bottom: 8px;
+                                                background-color: #fff;
+                                                padding: 10px;
+                                                border-radius: 50px;
+                                                box-shadow: 0 10px 4px rgba(0, 0, 0, 0.1);
+                                                display: flex;
+                                                justify-content: space-between;
+                                                align-items: center;
+                                }
+
+                                .delete-btn {
+                                                background-color: red;
+                                                color: white;
+                                                padding: 5px 100px;
+                                                cursor: pointer;
+                                                border: none;
+                                                border-radius: 50px;
+                                }
+    </style>
+</head>
+
+<body>
+    <h1>Prijava/Odjava za delo</h1>
+
+    <label for="name"><span style="font-size: large">Ime:</span></label>
+    <input type="text" id="name" placeholder="Vnesite ime">
+
+    <button onclick="checkIn()">Prijavi</button>
+    <button onclick="checkOut()">Odjavi</button>
+
+    <div id="duration"></div>
+
+    <label for="hourly-rate"><span style="font-size: large">Cena za uro (EUR):</label>
+    <input type="number" id="hourly-rate" placeholder="Vnesite ceno">
+
+    <div id="names"></div>
+
+    <div id="history">
+        <strong>Zgodovina del:</strong>
+        <ul id="history-list"></ul>
+    </div>
+
+    <script>
+        var checkedIn = false;
+        var checkInTime;
+        var checkOutTime;
+        var names = [];
+        var workHistory = JSON.parse(localStorage.getItem("workHistory")) || [];
+        var hourlyRate;
+
+        function saveToLocalStorage() {
+            localStorage.setItem("workHistory", JSON.stringify(workHistory));
+        }
+
+        function checkIn() {
+            var name = document.getElementById("name").value;
+
+            if (!name) {
+                alert("Please enter a name.");
+                return;
+            }
+
+            if (!checkedIn) {
+                // Perform check-in
+                checkInTime = new Date();
+                checkedIn = true;
+
+                // Add name to the list
+                names.push(name);
+
+                // Clear previous duration
+                document.getElementById("duration").innerHTML = name + ", prijavljeni ste.";
+
+                // Display names
+                displayNames();
+
+                // Save to local storage
+                saveToLocalStorage();
+            } else {
+                alert("You are already checked in. Please check out first.");
+            }
+        }
+
+        function checkOut() {
+            var name = document.getElementById("name").value;
+
+            if (!name) {
+                alert("Please enter a name.");
+                return;
+            }
+
+            if (checkedIn) {
+                // Perform check-out
+                checkOutTime = new Date();
+                checkedIn = false;
+
+                // Calculate duration
+                var duration = calculateDuration(checkInTime, checkOutTime);
+
+                // Display duration
+                document.getElementById("duration").innerHTML = name + ", odjavljeni ste. Skupen čas dela: " + duration;
+
+                // Clear input
+                document.getElementById("name").value = "";
+
+                // Calculate total price
+                var totalPrice = calculateTotalPrice(duration);
+                document.getElementById("duration").innerHTML += "<br>Skupna cena: €" + totalPrice.toFixed(2);
+
+                // Add entry to work history
+                workHistory.push({ name: name, checkIn: checkInTime, checkOut: checkOutTime, duration: duration, totalPrice: totalPrice });
+
+                // Display names and history
+                displayNames();
+                displayWorkHistory();
+
+                // Save to local storage
+                saveToLocalStorage();
+            } else {
+                alert("You are not checked in. Please check in first.");
+            }
+        }
+
+        function deleteHistoryEntry(index) {
+            if (confirm("Are you sure you want to delete this entry?")) {
+                var deletedName = workHistory[index].name;
+                workHistory.splice(index, 1);
+                names = names.filter(n => n !== deletedName);
+                displayWorkHistory();
+                displayNames();
+
+                // Save to local storage
+                saveToLocalStorage();
+            }
+        }
+
+        function calculateDuration(startTime, endTime) {
+            var milliseconds = endTime - startTime;
+            var seconds = Math.floor(milliseconds / 1000);
+            var minutes = Math.floor(seconds / 60);
+            var hours = Math.floor(minutes / 60);
+
+            minutes %= 60;
+            seconds %= 60;
+
+            // If less than an hour, consider it as one hour
+            hours = hours === 0 ? 1 : hours;
+
+            return hours + "h " + minutes + "m " + seconds + "s";
+        }
+
+        function calculateTotalPrice(duration) {
+            if (!hourlyRate) {
+                alert("Please enter an hourly rate.");
+                return 0;
+            }
+
+            var hours = parseFloat(duration);
+            return hours * hourlyRate;
+        }
+
+        function displayNames() {
+            var namesContainer = document.getElementById("names");
+            namesContainer.innerHTML = "<strong>Vsi naročniki:</strong><br>" + names.join(", ");
+        }
+
+        function displayWorkHistory() {
+            var historyList = document.getElementById("history-list");
+            historyList.innerHTML = ""; // Clear existing list
+
+            for (var i = 0; i < workHistory.length; i++) {
+                var historyItem = document.createElement("li");
+                var duration = workHistory[i].duration;
+                var totalPrice = workHistory[i].totalPrice;
+
+                historyItem.innerHTML = workHistory[i].name + ": " + duration +
+                    ' <button class="delete-btn" onclick="deleteHistoryEntry(' + i + ')">Delete</button>' +
+                    '<div>Total Price: $' + totalPrice.toFixed(2) + '</div>';
+
+                historyList.appendChild(historyItem);
+            }
+        }
+
+        document.getElementById("hourly-rate").addEventListener("input", function () {
+            hourlyRate = parseFloat(this.value);
+        });
+
+        // Load initial data
+        displayWorkHistory();
+        displayNames();
+    </script>
+</body>
+
+</html>
